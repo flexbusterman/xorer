@@ -32,12 +32,6 @@ import sys
 import argparse
 from pathlib import Path
 
-# Global variables - these will be overwritten by command-line arguments
-binary_data = "This is my binary text"  # Placeholder for data to encrypt/decrypt
-key = b"secret"                    # Default XOR key if none provided
-cipher = r""                             # Will hold encrypted output
-out_array = ""                           # Will hold formatted output
-
 def banner():
     print(
             "\033[38;5;160m" + r"   _  ______  ________  _____" + "\n"
@@ -92,15 +86,20 @@ def load_file(filename):
 
 def save_file(filename, data):
     """
-    Save data to a file. Opens file in binary write mode ('wb')
+    Save data to a file. Opens file in appropriate mode based on data type.
 
     Args:
         filename: Path where the file should be saved
-        data: The content to write
+        data: The content to write (can be bytes or string)
     """
     try:
-        with open(filename, "wb") as file:
-            file.write(data)
+        # If data is bytes, use binary mode; otherwise use text mode
+        if isinstance(data, bytes):
+            with open(filename, "wb") as file:
+                file.write(data)
+        else:
+            with open(filename, "w") as file:
+                file.write(data)
     except Exception as e:
         verbose_message(f"Failed to write to {filename}: {e}", "red")
         exit(1)
@@ -158,10 +157,9 @@ def make_array(format, data):
     - 'c': C-style byte array for use in C/C++ programs
     - 'python': Python byte string for use in Python scripts
     - 'raw': Raw binary bytes (for piping or saving to files)
-    - 'string': UTF-8 decoded string (for readable text output)
 
     Args:
-        format: The desired output format ('c', 'python', 'raw', or 'string')
+        format: The desired output format ('c', 'python', 'raw')
         data: List of byte values to format
 
     Returns:
@@ -207,23 +205,23 @@ if __name__ == "__main__":
     parser.add_argument(
         "-o", "--output",
         type=str,
-        nargs='?',  # Optional argument
+        required=False,
         help="Output file path. If not specified, result is printed to stdout."
     )
 
     parser.add_argument(
         "-k", "--key",
         type=str,
-        nargs='?',  # Optional argument
+        required=False,
         help="XOR encryption key. Can be a string or path to a file containing the key. If not specified, uses default key 'secret'."
     )
 
     parser.add_argument(
         "-f", "--format",
-        nargs='?',
+        required=False,
         default="raw",  # Default format
         choices=["raw", "python", "c"],
-        help="Output format: 'raw' (binary), 'python' (Python byte string), 'c' (C array). Default: string"
+        help="Output format: 'raw' (binary), 'python' (Python byte string), 'c' (C array). Default: raw"
     )
 
     parser.add_argument(
@@ -263,14 +261,21 @@ if __name__ == "__main__":
     if args.key:
         if Path(args.key).exists():
             # Key is a file - read it as binary
-            key = load_file(args.key)
-            verbose_message(f"Loaded key from file: {args.key}")
+            key = load_file(args.key).rstrip(b'\n\r')  # Strip trailing newlines
+            if not key:
+                verbose_message("Key file is empty or contains only whitespace", "red")
+                exit(1)
+            verbose_message(f"Loaded key from file: {args.key}", "green")
         else:
             # Key is a literal string - encode it to bytes
             key = args.key.encode()
+            if not key:
+                verbose_message("Key cannot be empty", "red")
+                exit(1)
             verbose_message(f"Using key string: {args.key}")
     else:
         # No key provided, using default 'secret'
+        key = b"secret"                    # Default XOR key if none provided
         verbose_message(f"No key provided, using default key: {key.decode()}")
 
     # === PERFORM XOR ENCRYPTION/DECRYPTION ===
