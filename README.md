@@ -39,15 +39,6 @@ chmod +x ~/.local/bin/xorer
 xorer [-h, --help] -i INPUT [-o, --output [OUTPUT]] [-k, --key [KEY]] [-f, --format [{raw,python,c}]] [-v, --version] [-V, --verbose]
 ```
 
-## Global
-
-```bash
-# Clone the repository
-git clone https://github.com/flexbusterman/xorer.git
-cd xorer
-xorer [-h, --help] -i INPUT [-o, --output [OUTPUT]] [-k, --key [KEY]] [-f, --format [{raw,python,c}]] [-v, --version] [-V, --verbose]
-```
-
 ### Required Arguments
 
 - `-i, --input`: Input file path or string to encrypt/decrypt
