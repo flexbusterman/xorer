@@ -1,0 +1,299 @@
+#!/usr/bin/env python3
+"""
+XOR Encryption/Decryption Tool
+
+This tool performs XOR cipher encryption and decryption on files or strings.
+XOR is a simple cipher where each byte of data is combined with a key byte
+using the XOR (exclusive OR) operation. Running XOR twice with the same key
+reverses the operation (encrypt then decrypt gives you back the original).
+
+Usage:
+    python xorer.py -i <input> -k <key> [-o output] [-f format]
+
+Examples:
+    # Encrypt a file to output file using key in file
+    python xorer.py -i message.txt -o encrypted.bin -k mykeyfile
+
+    # Decrypt a file and display as text
+    python xorer.py -i encrypted.bin -k "mysecretkeystring"
+
+    # Simple encryption and decryption using default key, then reversing encryption and printing to stout
+    python xorer.py -i "My message" -o cipherfile
+    python xorer.py -i cipherfile
+
+    # Output as Python byte array
+    python xorer.py -i "hello" -k "mysecretkeystring" -f python
+
+    # Output as C array for use in C programs
+    python xorer.py -i program.exe -f c
+"""
+
+import sys
+import argparse
+from pathlib import Path
+
+# Global variables - these will be overwritten by command-line arguments
+binary_data = "This is my binary text"  # Placeholder for data to encrypt/decrypt
+key = b"secret"                    # Default XOR key if none provided
+cipher = r""                             # Will hold encrypted output
+out_array = ""                           # Will hold formatted output
+
+def banner():
+    print(
+            "\033[38;5;160m" + r"   _  ______  ________  _____" + "\n"
+            + "\033[38;5;125m" + r"  | |/_/ __ \/ ___/ _ \/ ___/" + "\n"
+            + "\033[38;5;126m" + r" _>  </ /_/ / /  /  __/ /    " + "\n"
+            + "\033[38;5;92m" + r"/_/|_|\____/_/   \___/_/     " + "\n" + "\033[0m"
+    )
+
+# === COLOR PRINTING FUNCTION ===
+# These functions add ANSI color codes to terminal output for better readability
+
+def verbose_message(string, color="blue"):
+    """
+    Print debug messages if verbose mode is enabled.
+    Verbose mode is activated with the -V flag.
+    Valid colors are blue (default), red and green.
+    """
+    if args.verbose:
+        match color:
+            case "green":
+                """Print text in green (typically for success messages)"""
+                print("\033[38;5;2m[+] " + string + "\033[0m")
+            case "red":
+                """Print text in red (typically for errors)"""
+                print("\033[38;5;1m[-] " + string + "\033[0m")
+            case "yellow":
+                """Print text in yellow (typically for warnings)"""
+                print("\033[38;5;3m[WARN] " + string + "\033[0m")
+            case _:
+                """Print text in blue (default)"""
+                print("\033[38;5;4m" + string + "\033[0m")
+                pass
+
+# === FILE I/O FUNCTIONS ===
+
+def load_file(filename):
+    """
+    Read a file in binary mode and return its contents as bytes.
+
+    Binary mode ('rb') is important because:
+    - We want to read the exact bytes without text encoding
+    - Works for both text files and binary files (images, executables, etc.)
+
+    Args:
+        filename: Path to the file to read
+
+    Returns:
+        bytes: The raw binary content of the file
+    """
+    with open(filename, "rb") as file:
+        return file.read()
+
+def save_file(filename, data):
+    """
+    Save data to a file. Opens file in binary write mode ('wb')
+
+    Args:
+        filename: Path where the file should be saved
+        data: The content to write
+    """
+    try:
+        with open(filename, "wb") as file:
+            file.write(data)
+    except Exception as e:
+        verbose_message(f"Failed to write to {filename}: {e}", "red")
+        exit(1)
+
+# === ENCRYPTION FUNCTION ===
+
+def xor(data, key):
+    """
+    Perform XOR encryption/decryption on data using a key.
+
+    XOR (exclusive OR) is a binary operation:
+    - 0 XOR 0 = 0
+    - 0 XOR 1 = 1
+    - 1 XOR 0 = 1
+    - 1 XOR 1 = 0
+
+    The key property: (data XOR key) XOR key = data
+    This means XORing twice with the same key reverses the operation.
+
+    The key repeats cyclically if it's shorter than the data:
+    - Data: "hello world" (11 bytes)
+    - Key:  "key" (3 bytes)
+    - Applied: k e y k e y k e y k e
+
+    Args:
+        data: The bytes to encrypt/decrypt
+        key: The encryption key (1 or more bytes)
+
+    Returns:
+        list: A list of integers (0-255) representing the XORed bytes
+    """
+    out = []
+    verbose_message(f"xor function data input: {data}")
+    verbose_message(f"xor function key: {key}")
+
+    key_len = len(key)
+
+    # Loop through each byte in the data
+    for i, byte in enumerate(data):
+        # XOR this byte with the corresponding key byte
+        # The modulo (%) makes the key repeat: key[0], key[1], key[2], key[0], key[1]...
+        out.append(byte ^ key[i % key_len])
+
+    verbose_message(f"xor function output (first 20 elements): {(str(out[:20]) + '...') if len(out) > 20 else out}")
+
+    return out
+
+# === OUTPUT FORMATTING FUNCTION ===
+
+def make_array(format, data):
+    """
+    Format the encrypted/decrypted data for output in different formats.
+
+    Supported formats:
+    - 'c': C-style byte array for use in C/C++ programs
+    - 'python': Python byte string for use in Python scripts
+    - 'raw': Raw binary bytes (for piping or saving to files)
+    - 'string': UTF-8 decoded string (for readable text output)
+
+    Args:
+        format: The desired output format ('c', 'python', 'raw', or 'string')
+        data: List of byte values to format
+
+    Returns:
+        str or bytes: Formatted output in the requested format
+
+    """
+    verbose_message(f"Creating array of format: {format}")
+    # 02x: The 02 part tells python to use at least 2 digits and to use zeros to pad it to length, x means lower-case hexadecimal.
+    if format == "c":
+        # C array format: unsigned char buf[] = { 0x48, 0x65, 0x6c, 0x6c, 0x6f };
+        return "unsigned char buf[] = { " + ", ".join(f"0x{byte:02x}" for byte in data) + " };"
+
+    elif format == "python":
+        # Python bytes format: b"\x48\x65\x6c\x6c\x6f"
+        return "b\"" + "".join(f"\\x{byte:02x}" for byte in data) + "\""
+    elif format == "raw":
+        # Raw binary bytes - can be piped to files or other programs
+        return bytes(data)
+    else:
+        verbose_message(f"Invalid format: {format}", "red")
+        exit(1)
+
+# === MAIN PROGRAM ===
+
+if __name__ == "__main__":
+    """
+    Main entry point. Sets up command-line argument parsing and executes the program.
+    """
+
+    # Create argument parser with description
+    parser = argparse.ArgumentParser(
+        description="Simple XOR encrypter/decrypter - encrypt and decrypt files or strings using XOR cipher"
+    )
+
+    # Define command-line arguments
+    parser.add_argument(
+        "-i", "--input",
+        type=str,
+        required=True,
+        help="Input file path or string to encrypt/decrypt. If a file exists at this path, it will be read; otherwise the argument is treated as a literal string."
+    )
+
+    parser.add_argument(
+        "-o", "--output",
+        type=str,
+        nargs='?',  # Optional argument
+        help="Output file path. If not specified, result is printed to stdout."
+    )
+
+    parser.add_argument(
+        "-k", "--key",
+        type=str,
+        nargs='?',  # Optional argument
+        help="XOR encryption key. Can be a string or path to a file containing the key. If not specified, uses default key 'secret'."
+    )
+
+    parser.add_argument(
+        "-f", "--format",
+        nargs='?',
+        default="raw",  # Default format
+        choices=["raw", "python", "c"],
+        help="Output format: 'raw' (binary), 'python' (Python byte string), 'c' (C array). Default: string"
+    )
+
+    parser.add_argument(
+        "-v", "--version",
+        action="version",
+        version="xorer 1.0"
+    )
+
+    parser.add_argument(
+        "-V", "--verbose",
+        action="store_true",
+        help="Enable verbose output for debugging"
+    )
+
+    # Parse the command-line arguments
+    args = parser.parse_args()
+
+    # If in verbose mode, we print banner
+    if args.verbose:
+        banner()
+
+    verbose_message(f"Input: {args.input}")
+
+    # === LOAD INPUT DATA ===
+    # Check if input is a file path or a literal string
+    if Path(args.input).exists():
+        # Input is a file - read it as binary
+        binary_data = load_file(args.input)
+        verbose_message(f"Loaded input from file: {args.input}")
+    else:
+        # Input is a literal string - encode it to bytes
+        verbose_message(f"Input \"{args.input}\" isn't a file, treating as literal string")
+        binary_data = args.input.encode()  # Convert string to bytes using UTF-8
+
+    # === LOAD ENCRYPTION KEY ===
+    # Check if a custom key was provided, otherwise use default
+    if args.key:
+        if Path(args.key).exists():
+            # Key is a file - read it as binary
+            key = load_file(args.key)
+            verbose_message(f"Loaded key from file: {args.key}")
+        else:
+            # Key is a literal string - encode it to bytes
+            key = args.key.encode()
+            verbose_message(f"Using key string: {args.key}")
+    else:
+        # No key provided, using default 'secret'
+        verbose_message(f"No key provided, using default key: {key.decode()}")
+
+    # === PERFORM XOR ENCRYPTION/DECRYPTION ===
+    cipher = xor(binary_data, key)
+
+    # === FORMAT THE OUTPUT ===
+    out_array = make_array(args.format, cipher)
+
+    # === WARNING ===
+    if (not args.output) and args.verbose:
+        verbose_message("-V --verbose are used without -o --output argument, so when piping or outputting to file the verbose messages are included", "yellow")
+
+    # === WRITE OUTPUT ===
+    if args.output:
+        # Save to file
+        save_file(args.output, out_array)
+        verbose_message(f"Output saved to file: {args.output}", "green")
+    else:
+        # Print to stdout
+        if args.format == "raw" and isinstance(out_array, bytes):
+            # For raw binary output, write directly to stdout buffer
+            # This prevents Python from trying to decode it as text
+            sys.stdout.buffer.write(out_array)
+        else:
+            # For text formats, use regular print
+            print(out_array)
