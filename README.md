@@ -58,6 +58,12 @@ xorer [-h, --help] -i INPUT [-o, --output [OUTPUT]] [-k, --key [KEY]] [-f, --for
 - `-V, --verbose`: Enable verbose output for debugging
 - `-v, --version`: Show version information and quit
 
+### Output Formats
+
+- **raw**: Binary output suitable for files or piping
+- **python**: Python byte string format (`b"\x48\x65..."`)
+- **c**: C-style array declaration (`unsigned char buf[] = { 0x48, 0x65, ... };`)
+
 ### Examples
 
 ```bash
@@ -81,12 +87,6 @@ xorer -i cipherfile
 - Learning about encryption basics
 
 For production use, employ modern encryption standards like AES.
-
-## Output Formats
-
-- **raw**: Binary output suitable for files or piping
-- **python**: Python byte string format (`b"\x48\x65..."`)
-- **c**: C-style array declaration (`unsigned char buf[] = { 0x48, 0x65, ... };`)
 
 ## Requirements
 
