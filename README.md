@@ -39,6 +39,12 @@ chmod +x ~/.local/bin/xorer
 xorer [-h, --help] -i INPUT [-o, --output [OUTPUT]] [-k, --key [KEY]] [-f, --format [{raw,python,c}]] [-v, --version] [-V, --verbose]
 ```
 
+## Usage
+
+``` bash
+xorer [-h, --help] -i INPUT [-o, --output [OUTPUT]] [-k, --key [KEY]] [-f, --format [{raw,python,c}]] [-v, --version] [-V, --verbose]
+```
+
 ### Required Arguments
 
 - `-i, --input`: Input file path or string to encrypt/decrypt
@@ -52,7 +58,7 @@ xorer [-h, --help] -i INPUT [-o, --output [OUTPUT]] [-k, --key [KEY]] [-f, --for
 - `-V, --verbose`: Enable verbose output for debugging
 - `-v, --version`: Show version information and quit
 
-## Examples
+### Examples
 
 ```bash
 # Encrypt a file to output file using key in file with verbose output
