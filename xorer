@@ -40,14 +40,11 @@ def banner():
             + "\033[38;5;92m" + r"/_/|_|\____/_/   \___/_/     " + "\n" + "\033[0m"
     )
 
-# === COLOR PRINTING FUNCTION ===
-# These functions add ANSI color codes to terminal output for better readability
-
 def verbose_message(string, color="blue"):
     """
     Print debug messages if verbose mode is enabled.
     Verbose mode is activated with the -V flag.
-    Valid colors are blue (default), red and green.
+    Valid colors are blue (default), red, yellow and green.
     """
     if args.verbose:
         match color:
@@ -64,8 +61,6 @@ def verbose_message(string, color="blue"):
                 """Print text in blue (default)"""
                 print("\033[38;5;4m" + string + "\033[0m")
                 pass
-
-# === FILE I/O FUNCTIONS ===
 
 def load_file(filename):
     """
@@ -103,8 +98,6 @@ def save_file(filename, data):
     except Exception as e:
         verbose_message(f"Failed to write to {filename}: {e}", "red")
         exit(1)
-
-# === ENCRYPTION FUNCTION ===
 
 def xor(data, key):
     """
@@ -147,8 +140,6 @@ def xor(data, key):
 
     return out
 
-# === OUTPUT FORMATTING FUNCTION ===
-
 def make_array(format, data):
     """
     Format the encrypted/decrypted data for output in different formats.
@@ -182,7 +173,11 @@ def make_array(format, data):
         verbose_message(f"Invalid format: {format}", "red")
         exit(1)
 
-# === MAIN PROGRAM ===
+#    __  ___     _
+#   /  |/  /__ _(_)__
+#  / /|_/ / _ `/ / _ \
+# /_/  /_/\_,_/_/_//_/
+# main
 
 if __name__ == "__main__":
     """
